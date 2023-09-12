@@ -49,12 +49,12 @@ def load_data():
         service_context = ServiceContext.from_defaults(
             llm=llm,
             embed_model=HuggingFaceEmbeddings(
-                model_name="sentence-transformers/all-mpnet-base-v2"
+                model_name="sentence-transformers/all-MiniLM-L6-v2"
             ),
             node_parser=node_parser,
         )
-        db = FAISS.from_documents(docs, service_context)
-        db.save_local(DB_FAISS_PATH)
+        # db = FAISS.from_documents(docs, service_context)
+        # db.save_local(DB_FAISS_PATH)
 
         index = VectorStoreIndex.from_documents(docs, service_context=service_context)
         return index
@@ -88,3 +88,9 @@ if st.session_state.messages[-1]["role"] != "assistant":
             st.write(response.response)
             message = {"role": "assistant", "content": response.response}
             st.session_state.messages.append(message)  # Add response to message history
+
+
+if st.button("Clear All"):
+    # Clear values from *all* all in-memory and on-disk data caches:
+    # i.e. clear values from both square and cube
+    st.cache_data.clear()
