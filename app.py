@@ -9,10 +9,14 @@ from llama_index.node_parser import SentenceWindowNodeParser
 import streamlit as st
 from llama_index import VectorStoreIndex, ServiceContext, Document
 from llama_index.llms import OpenAI
+from langchain.vectorstores import FAISS
+
 import openai
 
 os.environ["OPENAI_API_KEY"] = "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"
 openai.api_key = os.environ["OPENAI_API_KEY"]
+DB_FAISS_PATH = "vectorstore/db_faiss"
+
 
 st.header("Chat with the GE 💬 📚")
 
@@ -49,6 +53,9 @@ def load_data():
             ),
             node_parser=node_parser,
         )
+        db = FAISS.from_documents(docs, service_context)
+        db.save_local(DB_FAISS_PATH)
+
         index = VectorStoreIndex.from_documents(docs, service_context=service_context)
         return index
 
@@ -57,7 +64,7 @@ index = load_data()
 
 # chat_engine = index.as_chat_engine(chat_mode="react", verbose=True)
 query_engine = index.as_query_engine(
-    similarity_top_k=2,
+    similarity_top_k=4,
     # the target key defaults to `window` to match the node_parser's default
     node_postprocessors=[
         MetadataReplacementPostProcessor(target_metadata_key="window")
