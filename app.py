@@ -55,7 +55,14 @@ def load_data():
 
 index = load_data()
 
-chat_engine = index.as_chat_engine(chat_mode="condense_question", verbose=True)
+# chat_engine = index.as_chat_engine(chat_mode="react", verbose=True)
+query_engine = index.as_query_engine(
+    similarity_top_k=2,
+    # the target key defaults to `window` to match the node_parser's default
+    node_postprocessors=[
+        MetadataReplacementPostProcessor(target_metadata_key="window")
+    ],
+)
 
 if prompt := st.chat_input(
     "Your question"
@@ -70,7 +77,7 @@ for message in st.session_state.messages:  # Display the prior chat messages
 if st.session_state.messages[-1]["role"] != "assistant":
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            response = chat_engine.chat(prompt)
+            response = query_engine.query(prompt)
             st.write(response.response)
             message = {"role": "assistant", "content": response.response}
             st.session_state.messages.append(message)  # Add response to message history
