@@ -13,6 +13,7 @@ from llama_index import (
     StorageContext,
     load_index_from_storage,
 )
+
 from llama_index.llms import OpenAI
 from llama_index.storage.docstore import SimpleDocumentStore
 from llama_index.storage.index_store import SimpleIndexStore
@@ -24,27 +25,8 @@ import faiss
 import openai
 import chromadb
 
-os.environ["OPENAI_API_KEY"] = "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"
-openai.api_key = os.environ["OPENAI_API_KEY"]
-DB_FAISS_PATH = "vectorstore/db_faiss"
 
-
-st.header("Chat with the GE 💬 📚")
-
-if "messages" not in st.session_state.keys():  # Initialize the chat message history
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": "Ask me a question about GE Contract Documents",
-        }
-    ]
-
-
-@st.cache_resource(show_spinner=False)
-def load_data(folder_path):
-    with st.spinner(
-        text="Loading and indexing the GE docs – hang tight! This should take 1-2 minutes."
-    ):
+def get_data():
         reader = SimpleDirectoryReader(input_dir="./data", recursive=True)
         docs = reader.load_data()
 
@@ -80,7 +62,7 @@ def load_data(folder_path):
         return index
 
 
-def retrieve_data():
+def get_store_data():
     db2 = chromadb.PersistentClient(path="./chroma_db")
     chroma_collection = db2.get_or_create_collection("quickstart")
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
@@ -108,40 +90,21 @@ def retrieve_data():
     return index
 
 
-folder_path = "chroma_db"
 
-index = retrieve_data() if os.path.exists(folder_path) else load_data(folder_path)
+def query_data(prompt):
+    os.environ["OPENAI_API_KEY"] = "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"
+    openai.api_key = os.environ["OPENAI_API_KEY"]
+    folder_path = "chroma_db"
+    index = get_store_data() if os.path.exists(folder_path) else get_data(folder_path)
 
+    # chat_engine = index.as_chat_engine(chat_mode="react", verbose=True)
+    query_engine = index.as_query_engine(
+        similarity_top_k=6,
+        # the target key defaults to `window` to match the node_parser's default
+        node_postprocessors=[
+            MetadataReplacementPostProcessor(target_metadata_key="window")
+        ],)
+    
 
-# chat_engine = index.as_chat_engine(chat_mode="react", verbose=True)
-query_engine = index.as_query_engine(
-    similarity_top_k=6,
-    # the target key defaults to `window` to match the node_parser's default
-    node_postprocessors=[
-        MetadataReplacementPostProcessor(target_metadata_key="window")
-    ],
-)
-
-if prompt := st.chat_input(
-    "Your question"
-):  # Prompt for user input and save to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
-
-for message in st.session_state.messages:  # Display the prior chat messages
-    with st.chat_message(message["role"]):
-        st.write(message["content"])
-
-# If last message is not from assistant, generate a new response
-if st.session_state.messages[-1]["role"] != "assistant":
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            response = query_engine.query(prompt)
-            st.write(response.response)
-            message = {"role": "assistant", "content": response.response}
-            st.session_state.messages.append(message)  # Add response to message history
-
-
-if st.button("Clear All"):
-    # Clear values from *all* all in-memory and on-disk data caches:
-    # i.e. clear values from both square and cube
-    st.cache_data.clear()
+    return query_engine.query(prompt).response
+      

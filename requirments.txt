@@ -5,3 +5,6 @@ nltk
 sentence_transformers
 langchain
 pypdf
+chromadb
+flasgger
+flask_cors
